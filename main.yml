@@ -32,13 +32,15 @@
         comment: Jenkins user
         group: jenkins
       become: yes
-    
-    - name: Get jenkins executor url
+
+    - name: Get jenkins executor jar file
       get_url:
-        url: https://csc326-jenkins.csc.ncsu.edu/jenkins/jnlpJars/slave.jar/
+        url: https://csc326-jenkins.csc.ncsu.edu/jenkins/jnlpJars/slave.jar
         dest: /home/jenkins
         validate_certs: False
-      become_user: jenkins
+        owner: jenkins
+        group: jenkins
+        mode: 0644
       become: yes
 
     - name: Set authorized key
@@ -53,6 +55,7 @@
       file: 
         path: ~/settings
         state: directory
+      register: settings_directory
 
     - name: copy db template
       template: 
@@ -66,8 +69,13 @@
 
     # Keep copy for jenkins user.
     - name: copy settings for jenkins user too.
-      shell: cp -r {{ ansible_env.HOME}}/settings/ /home/jenkins/
-      # become_user: jenkins
+      synchronize:
+        src: "{{ settings_directory.path }}"
+        dest: /home/jenkins
+        rsync_opts:
+          - "--chown=jenkins:jenkins"
+
+      delegate_to: "{{ inventory_hostname }}"
       become: yes
 
     - name: Install maven
